@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  server:
+    build: ./server
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./server/uploads:/app/uploads
+    environment:
+      - NODE_ENV=development
+      - ADMIN_PASSWORD=changeme
+      - JWT_SECRET=change_this_secret
+  client:
+    build: ./client
+    ports:
+      - "3000:80"
+    depends_on:
+      - server

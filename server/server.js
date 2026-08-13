@@ -258,6 +258,21 @@ app.get('/api/products/:id/qrcode', async (req, res) => {
   }
 });
 
+// QR code as PNG image (for direct scanning)
+app.get('/api/products/:id/qrcode.png', async (req, res) => {
+  const p = await Product.findByPk(req.params.id);
+  if (!p || !p.isApproved || p.isRejected) return res.status(404).send('not available');
+  const host = req.get('origin') || (req.protocol + '://' + req.get('host'));
+  const url = `${host}/api/products/${p.id}/download`;
+  try {
+    const buffer = await QRCode.toBuffer(url, { type: 'png', width: 300 });
+    res.set('Content-Type', 'image/png');
+    res.send(buffer);
+  } catch (e) {
+    res.status(500).send('qrcode error');
+  }
+});
+
 // Simple admin creation helper if ADMIN_PASSWORD matches env var
 app.post('/api/setup/admin', async (req, res) => {
   const { username, password, adminSecret } = req.body;

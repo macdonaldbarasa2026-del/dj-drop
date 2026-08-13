@@ -1,67 +1,62 @@
 import React, { useEffect, useState } from 'react';
+import { Routes, Route, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Home from './pages/Home';
+import Admin from './pages/AdminDashboard';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 const API = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 
 function App(){
-  const [products, setProducts] = useState([]);
   const [token, setToken] = useState(localStorage.getItem('token'));
-  const [file, setFile] = useState(null);
-  const [title, setTitle] = useState('');
-  const [desc, setDesc] = useState('');
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(()=>{
-    fetchProducts();
-  },[]);
+    if (token) {
+      axios.get(API + '/api/me', { headers: { Authorization: 'Bearer ' + token } }).then(r=>setUser(r.data.user)).catch(()=>{ setToken(null); localStorage.removeItem('token'); });
+    }
+  },[token]);
 
-  async function fetchProducts(){
-    const res = await axios.get(API + '/api/products');
-    setProducts(res.data.products || []);
-  }
-
-  async function login(){
-    const username = prompt('username');
-    const password = prompt('password');
-    const res = await axios.post(API + '/api/login', { username, password });
-    setToken(res.data.token);
-    localStorage.setItem('token', res.data.token);
-    alert('logged in');
-  }
-
-  async function upload(){
-    if(!file) return alert('choose file');
-    const form = new FormData();
-    form.append('file', file);
-    form.append('title', title);
-    form.append('description', desc);
-    const res = await axios.post(API + '/api/products', form, { headers: { Authorization: 'Bearer ' + token } });
-    alert('uploaded, pending approval');
+  function onLogout(){
+    setToken(null); setUser(null); localStorage.removeItem('token'); navigate('/');
   }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1>dj-drop (demo)</h1>
-      {!token && <button onClick={login}>Login</button>}
-      <h2>Products</h2>
-      <div style={{ display: 'grid', gap: 10 }}>
-        {products.map(p => (
-          <div key={p.id} style={{ border: '1px solid #ddd', padding: 10 }}>
-            <strong>{p.title}</strong>
-            <p>{p.description}</p>
-            <a href={`http://localhost:4000/api/products/${p.id}/download`}>Download</a>
+    <div>
+      <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div className="container">
+          <Link to="/" className="navbar-brand">dj-drop</Link>
+          <div className="collapse navbar-collapse">
+            <ul className="navbar-nav me-auto">
+              <li className="nav-item"><Link to="/" className="nav-link">Home</Link></li>
+              {user && user.isAdmin && <li className="nav-item"><Link to="/admin" className="nav-link">Admin</Link></li>}
+            </ul>
+            <ul className="navbar-nav ms-auto">
+              {user ? (
+                <>
+                  <li className="nav-item nav-link">{user.username}</li>
+                  <li className="nav-item"><button className="btn btn-sm btn-secondary" onClick={onLogout}>Logout</button></li>
+                </>
+              ) : (
+                <>
+                  <li className="nav-item"><Link to="/login" className="nav-link">Login</Link></li>
+                  <li className="nav-item"><Link to="/register" className="nav-link">Register</Link></li>
+                </>
+              )}
+            </ul>
           </div>
-        ))}
-      </div>
+        </div>
+      </nav>
 
-      <h2>Upload (for logged in users)</h2>
-      <div>
-        <input type="text" placeholder="title" value={title} onChange={e=>setTitle(e.target.value)} />
-        <br />
-        <textarea placeholder="description" value={desc} onChange={e=>setDesc(e.target.value)} />
-        <br />
-        <input type="file" onChange={e=>setFile(e.target.files[0])} />
-        <br />
-        <button onClick={upload}>Upload</button>
+      <div className="container mt-4">
+        <Routes>
+          <Route path="/" element={<Home token={token} />} />
+          <Route path="/admin" element={<Admin token={token} />} />
+          <Route path="/login" element={<Login onLogin={(t)=>{ setToken(t); localStorage.setItem('token', t); navigate('/'); }} />} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
       </div>
     </div>
   );
